@@ -58,7 +58,7 @@ public class HttpsJwksVerificationKeyResolverTest
         JsonWebKey k2 = jwks.getJsonWebKeys().iterator().next();
 
         String location = "https://www.example.org/";
-        HttpsJwks httpsJkws = new HttpsJwks(location);
+        HttpsJwks httpsJkws = new DefaultHttpsJwks(location);
 
         Get mockGet = mock(Get.class);
         Map<String,List<String>> headers = Collections.emptyMap();
@@ -122,7 +122,7 @@ public class HttpsJwksVerificationKeyResolverTest
 
         Get mockGet = mock(Get.class);
         when(mockGet.get(location)).thenThrow(new IOException(location + "says 'no GET for you!'"));
-        HttpsJwks httpsJkws = new HttpsJwks(location);
+        HttpsJwks httpsJkws = new DefaultHttpsJwks(location);
         httpsJkws.setSimpleHttpGet(mockGet);
         HttpsJwksVerificationKeyResolver resolver = new HttpsJwksVerificationKeyResolver(httpsJkws);
 
@@ -197,7 +197,7 @@ public class HttpsJwksVerificationKeyResolverTest
         JsonWebKeySet secondJwks = new JsonWebKeySet(secondJwksJson);
 
         String location = "https://www.example.org/";
-        HttpsJwks httpsJkws = new HttpsJwks(location);
+        HttpsJwks httpsJkws = new DefaultHttpsJwks(location);
 
         Get mockGet = mock(Get.class);
         Map<String,List<String>> headers = Collections.emptyMap();
@@ -266,7 +266,7 @@ public class HttpsJwksVerificationKeyResolverTest
 
 
         String location = "https://abc.bfe.xyz/";
-        HttpsJwks httpsJkws = new HttpsJwks(location);
+        HttpsJwks httpsJkws = new DefaultHttpsJwks(location);
 
         Get mockGet = mock(Get.class);
         Map<String,List<String>> headers = Collections.emptyMap();

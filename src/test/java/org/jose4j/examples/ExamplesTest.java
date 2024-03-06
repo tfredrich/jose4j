@@ -16,6 +16,8 @@
 
 package org.jose4j.examples;
 
+import static org.junit.Assert.fail;
+
 import java.security.Key;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -30,6 +32,7 @@ import org.jose4j.jwa.AlgorithmConstraints.ConstraintType;
 import org.jose4j.jwe.ContentEncryptionAlgorithmIdentifiers;
 import org.jose4j.jwe.JsonWebEncryption;
 import org.jose4j.jwe.KeyManagementAlgorithmIdentifiers;
+import org.jose4j.jwk.DefaultHttpsJwks;
 import org.jose4j.jwk.EcJwkGenerator;
 import org.jose4j.jwk.EllipticCurveJsonWebKey;
 import org.jose4j.jwk.HttpsJwks;
@@ -62,8 +65,6 @@ import org.jose4j.keys.resolvers.X509VerificationKeyResolver;
 import org.jose4j.lang.ByteUtil;
 import org.jose4j.lang.JoseException;
 import org.junit.Test;
-
-import static org.junit.Assert.fail;
 
 /**
  * There's probably a better way to do this but this is intended as a place to write and try and maintain
@@ -452,7 +453,7 @@ public void jwtRoundTripExample() throws JoseException, InvalidJwtException, Mal
     // The HttpsJwks retrieves and caches keys from a the given HTTPS JWKS endpoint.
     // Because it retains the JWKs after fetching them, it can and should be reused
     // to improve efficiency by reducing the number of outbound calls the endpoint.
-    HttpsJwks httpsJkws = new HttpsJwks("https://example.com/jwks");
+    HttpsJwks httpsJkws = new DefaultHttpsJwks("https://example.com/jwks");
 
     // The HttpsJwksVerificationKeyResolver uses JWKs obtained from the HttpsJwks and will select the
     // most appropriate one to use for verification based on the Key ID and other factors provided

@@ -41,7 +41,7 @@ import static org.junit.Assert.assertThat;
 /**
  *
  */
-public class HttpsJwksTest
+public class DefaultHttpsJwksTest
 {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
@@ -63,17 +63,17 @@ public class HttpsJwksTest
         Map<String, List<String>> headers = Collections.singletonMap("Expires", Collections.singletonList("Sun, 06 Nov 1994 08:49:37 GMT"));
         SimpleResponse simpleResponse = new Response(200, "OK", headers, "doesn't matter");
         assertThat(actualDateMs, equalTo(HttpsJwks.getExpires(simpleResponse)));
-        assertThat(actualCacheLife, equalTo(HttpsJwks.getCacheLife(simpleResponse, fakeCurrentTime)));
+        assertThat(actualCacheLife, equalTo(DefaultHttpsJwks.getCacheLife(simpleResponse, fakeCurrentTime)));
 
         headers = Collections.singletonMap("Expires", Collections.singletonList("Sunday, 06-Nov-94 08:49:37 GMT"));
         simpleResponse = new Response(200, "OK", headers, "doesn't matter");
         assertThat(actualDateMs, equalTo(HttpsJwks.getExpires(simpleResponse)));
-        assertThat(actualCacheLife, equalTo(HttpsJwks.getCacheLife(simpleResponse, fakeCurrentTime)));
+        assertThat(actualCacheLife, equalTo(DefaultHttpsJwks.getCacheLife(simpleResponse, fakeCurrentTime)));
 
         headers = Collections.singletonMap("Expires", Collections.singletonList("Sun Nov  6 08:49:37 1994"));
         simpleResponse = new Response(200, "OK", headers, "*still* doesn't matter");
         assertThat(actualDateMs, equalTo(HttpsJwks.getExpires(simpleResponse)));
-        assertThat(actualCacheLife, equalTo(HttpsJwks.getCacheLife(simpleResponse, fakeCurrentTime)));
+        assertThat(actualCacheLife, equalTo(DefaultHttpsJwks.getCacheLife(simpleResponse, fakeCurrentTime)));
     }
 
     @Test
@@ -100,7 +100,7 @@ public class HttpsJwksTest
             headers.put("Expires", Collections.singletonList("Expires: Tue, 27 Jan 2015 16:00:10 GMT")); // Cache-Control takes precedence over this
             headers.put("Cache-Control", Collections.singletonList(headerValue));
             SimpleResponse simpleResponse = new Response(200, "OK", headers, "doesn't matter");
-            long cacheLife = HttpsJwks.getCacheLife(simpleResponse);
+            long cacheLife = DefaultHttpsJwks.getCacheLife(simpleResponse);
             assertThat("it done broke on this one " + headerValue, 23760L , equalTo(cacheLife));
         }
     }
@@ -157,7 +157,7 @@ public class HttpsJwksTest
         Get get = new Get();
         get.setTrustedCertificates(certificate, x509Certificate);
 
-        final HttpsJwks httpsJwks = new HttpsJwks(location);
+        final HttpsJwks httpsJwks = new DefaultHttpsJwks(location);
         httpsJwks.setSimpleHttpGet(get);
         httpsJwks.setDefaultCacheDuration(1);
         httpsJwks.setRetainCacheOnErrorDuration(1);
