@@ -15,19 +15,17 @@
  */
 package org.jose4j.jwk;
 
-import org.jose4j.http.Get;
-import org.jose4j.http.SimpleGet;
-import org.jose4j.http.SimpleResponse;
-import org.jose4j.lang.ExceptionHelp;
-import org.jose4j.lang.JoseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
+
+import org.jose4j.http.SimpleResponse;
+import org.jose4j.lang.ExceptionHelp;
+import org.jose4j.lang.JoseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a set of JSON Web Keys (typically public keys) published at an HTTPS URI.
@@ -42,15 +40,12 @@ import java.util.concurrent.locks.ReentrantLock;
  * @see org.jose4j.keys.resolvers.HttpsJwksVerificationKeyResolver
  */
 public class DefaultHttpsJwks
-implements HttpsJwks
+extends AbstractHttpsJwks
 {
     private static final Logger log = LoggerFactory.getLogger(DefaultHttpsJwks.class);
 
-    private final String location;
     private volatile long defaultCacheDuration = 3600;  // seconds
-    private volatile SimpleGet simpleHttpGet = new Get();
     private volatile long retainCacheOnErrorDurationMills = 0;
-
     private volatile Cache cache = new Cache(Collections.<JsonWebKey>emptyList(), 0);
 
     // used to stop multiple threads from refreshing in parallel
@@ -64,7 +59,7 @@ implements HttpsJwks
      */
     public DefaultHttpsJwks(String location)
     {
-        this.location = location;
+    	super(location);
     }
 
     /**
@@ -94,27 +89,6 @@ implements HttpsJwks
     public void setRetainCacheOnErrorDuration(long retainCacheOnErrorDuration)
     {
         this.retainCacheOnErrorDurationMills = retainCacheOnErrorDuration * 1000L;
-    }
-
-    /**
-     * Sets the SimpleGet instance to use when making the HTTP GET request to the JWKS location.
-     * By default a new instance of {@link org.jose4j.http.Get} is used. This method should be used
-     * right after construction, if a different implementation of {@link org.jose4j.http.SimpleGet}
-     * or non-default configured instance of {@link org.jose4j.http.Get} is needed.
-     * @param simpleHttpGet the instance of the implementation of SimpleGet to use
-     */
-    public void setSimpleHttpGet(SimpleGet simpleHttpGet)
-    {
-        this.simpleHttpGet = simpleHttpGet;
-    }
-
-    /**
-     * Gets the location of the JWKS endpoint/URL.
-     * @return the location
-     */
-    public String getLocation()
-    {
-        return location;
     }
 
 
@@ -167,7 +141,7 @@ implements HttpsJwks
             if (retainCacheOnErrorDurationMills > 0 && !c.keys.isEmpty())
             {
                 cache = c = new Cache(c.keys, now + retainCacheOnErrorDurationMills);
-                log.info("Because of {} unable to refresh JWKS content from {} so will continue to use cached keys for more {} seconds until about {} -> {}", ExceptionHelp.toStringWithCauses(e), location, retainCacheOnErrorDurationMills/1000L, new Date(c.exp), c.keys);
+                log.info("Because of {} unable to refresh JWKS content from {} so will continue to use cached keys for more {} seconds until about {} -> {}", ExceptionHelp.toStringWithCauses(e), getLocation(), retainCacheOnErrorDurationMills/1000L, new Date(c.exp), c.keys);
             }
             else
             {
@@ -197,22 +171,22 @@ implements HttpsJwks
 
             if (last < refreshReprieveThreshold && !cache.keys.isEmpty())
             {
-                log.debug("NOT refreshing/loading JWKS from {} because it just happened {} mills ago", location, last);
+                log.debug("NOT refreshing/loading JWKS from {} because it just happened {} mills ago", getLocation(), last);
             }
             else
             {
-                log.debug("Refreshing/loading JWKS from {}", location);
-                SimpleResponse simpleResponse = simpleHttpGet.get(location);
+                log.debug("Refreshing/loading JWKS from {}", getLocation());
+                SimpleResponse simpleResponse = get();
                 JsonWebKeySet jwks = new JsonWebKeySet(simpleResponse.getBody());
                 List<JsonWebKey> keys = jwks.getJsonWebKeys();
                 long cacheLife = getCacheLife(simpleResponse);
                 if (cacheLife <= 0)
                 {
-                    log.debug("Will use default cache duration of {} seconds for content from {}", defaultCacheDuration, location);
+                    log.debug("Will use default cache duration of {} seconds for content from {}", defaultCacheDuration, getLocation());
                     cacheLife = defaultCacheDuration;
                 }
                 long exp = System.currentTimeMillis() + (cacheLife * 1000L);
-                log.debug("Updated JWKS content from {} will be cached for {} seconds until about {} -> {}", location, cacheLife, new Date(exp), keys);
+                log.debug("Updated JWKS content from {} will be cached for {} seconds until about {} -> {}", getLocation(), cacheLife, new Date(exp), keys);
                 cache = new Cache(keys, exp);
             }
         } 
