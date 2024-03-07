@@ -1,7 +1,6 @@
 package org.jose4j.jwk;
 
 import java.io.IOException;
-import java.text.DateFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -10,8 +9,8 @@ import org.jose4j.http.SimpleGet;
 import org.jose4j.http.SimpleResponse;
 import org.jose4j.lang.JoseException;
 
-public interface HttpsJwks {
-
+public interface HttpsJwks
+{
 	/**
 	 * The time period to cache the JWKs from the endpoint, if the cache directive
 	 * headers of the response are not present or indicate that the content should not be cached.
