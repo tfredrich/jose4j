@@ -42,7 +42,7 @@ implements HttpsJwks
         return location;
     }
 
-	protected SimpleResponse get()
+	protected SimpleResponse performSimpleHttpGet()
 	throws IOException
 	{
 		return simpleHttpGet.get(location);

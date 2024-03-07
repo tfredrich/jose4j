@@ -176,7 +176,7 @@ extends AbstractHttpsJwks
             else
             {
                 log.debug("Refreshing/loading JWKS from {}", getLocation());
-                SimpleResponse simpleResponse = get();
+                SimpleResponse simpleResponse = performSimpleHttpGet();
                 JsonWebKeySet jwks = new JsonWebKeySet(simpleResponse.getBody());
                 List<JsonWebKey> keys = jwks.getJsonWebKeys();
                 long cacheLife = getCacheLife(simpleResponse);
