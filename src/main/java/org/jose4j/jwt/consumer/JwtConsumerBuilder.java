@@ -415,8 +415,45 @@ public class JwtConsumerBuilder
      */
     public JwtConsumerBuilder setExpectedAudience(boolean requireAudienceClaim, String... audience)
     {
+        return setExpectedAudience(requireAudienceClaim, false, audience);
+    }
+
+    /**
+     * <p>
+     * Set the audience value(s) to use when validating the audience ("aud") claim of a JWT.
+     * Audience validation will succeed, if any one of the provided values is equal to any one
+     * of the values of the "aud" claim in the JWT.
+     * </p>
+     * <p>
+     * If present, the audience claim will always be validated (unless explicitly disabled). The {@code requireAudienceClaim} parameter
+     * can be used to indicate whether or not the presence of the audience claim is required. In most cases
+     *  {@code requireAudienceClaim} should be {@code true}.
+     * </p>
+     * <p>
+     * From <a href="http://tools.ietf.org/html/rfc7519#section-4.1.3">Section 4.1.3 of RFC 7519</a>:
+     *  The "aud" (audience) claim identifies the recipients that the JWT is
+     * intended for.  Each principal intended to process the JWT MUST
+     * identify itself with a value in the audience claim.  If the principal
+     * processing the claim does not identify itself with a value in the
+     * "aud" claim when this claim is present, then the JWT MUST be
+     * rejected.  In the general case, the "aud" value is an array of case-
+     * sensitive strings, each containing a StringOrURI value.  In the
+     * special case when the JWT has one audience, the "aud" value MAY be a
+     * single case-sensitive string containing a StringOrURI value.  The
+     * interpretation of audience values is generally application specific.
+     * Use of this claim is OPTIONAL.
+     * </p>
+     * @param requireAudienceClaim true, if an audience claim has to be present for validation to succeed. false, otherwise
+     * @param strict true if the audience claim MUST be a single string value, false if it can be an array of strings or a single string
+     * @param audience the audience value(s) that identify valid recipient(s) of a JWT
+     * @return the same JwtConsumerBuilder
+     */
+
+    public JwtConsumerBuilder setExpectedAudience(boolean requireAudienceClaim, boolean strict, String... audience)
+    {
         Set<String> acceptableAudiences = new HashSet<>(Arrays.asList(audience));
-        audValidator = new AudValidator(acceptableAudiences, requireAudienceClaim);
+        audValidator = strict ? new StrictAudValidator(acceptableAudiences, requireAudienceClaim)
+                              : new GeneralAudValidator(acceptableAudiences, requireAudienceClaim);
         return this;
     }
 
@@ -718,7 +755,7 @@ public class JwtConsumerBuilder
                 {
                     if (audValidator == null)
                     {
-                        audValidator = new AudValidator(Collections.<String>emptySet(), false);
+                        audValidator = new GeneralAudValidator(Collections.<String>emptySet(), false);
                     }
                     validators.add(audValidator);
                 }

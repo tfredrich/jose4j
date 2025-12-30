@@ -143,6 +143,18 @@ public class JwtClaims
         throw new MalformedClaimException("The value of the '" + ReservedClaimNames.AUDIENCE + "' claim is not an array of strings or a single string value.");
     }
 
+    /**
+     * Gets the "raw" value of the "aud" (Audience) Claim if present or null. The return value can be a string, an
+     * array of strings, or anything else, The consumer of this method should perform the necessary validations.
+     * Use {@link #getAudience()} instead to get the audience claim as a list of string values.
+     *
+     * @return the raw value of the audience claim
+     */
+    public Object getRawAudience()
+    {
+        return claimsMap.get(ReservedClaimNames.AUDIENCE);
+    }
+
     private List<String> toStringList(List list, String claimName) throws MalformedClaimException
     {
         if (list == null)

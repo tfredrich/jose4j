@@ -3397,4 +3397,55 @@ public class JwtConsumerTest
             SimpleJwtConsumerTestHelp.expectProcessingFailure(jot, c);
         }
     }
+
+    @Test
+    public void strictAudValidation_stringAudClaim_pass()
+            throws JoseException, InvalidJwtException, MalformedClaimException
+    {
+        RsaJsonWebKey rsaJsonWebKey = RsaJwkGenerator.generateJwk(2048);
+        rsaJsonWebKey.setKeyId("k1");
+        JwtClaims claims = new JwtClaims();
+        claims.setIssuer("Issuer");
+        claims.setAudience("Audience");
+        JsonWebSignature jws = new JsonWebSignature();
+        jws.setPayload(claims.toJson());
+        jws.setKey(rsaJsonWebKey.getPrivateKey());
+        jws.setKeyIdHeaderValue(rsaJsonWebKey.getKeyId());
+        jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
+        String jwt = jws.getCompactSerialization();
+
+        JwtConsumer jwtConsumer = new JwtConsumerBuilder()
+                .setExpectedIssuer("Issuer")
+                .setExpectedAudience(true, true, "Audience")
+                .setVerificationKey(rsaJsonWebKey.getKey())
+                .build();
+
+        JwtClaims jwtClaims = jwtConsumer.processToClaims(jwt);
+        Assert.assertEquals("Audience", jwtClaims.getAudience().get(0));
+    }
+
+    @Test(expected = InvalidJwtException.class)
+    public void strictAudValidation_arrayAudClaim_throwException() throws JoseException, InvalidJwtException
+    {
+        RsaJsonWebKey rsaJsonWebKey = RsaJwkGenerator.generateJwk(2048);
+        rsaJsonWebKey.setKeyId("k1");
+        JwtClaims claims = new JwtClaims();
+        claims.setIssuer("Issuer");
+        claims.setAudience(Arrays.asList("Audience1", "Audience2"));
+        JsonWebSignature jws = new JsonWebSignature();
+        jws.setPayload(claims.toJson());
+        jws.setKey(rsaJsonWebKey.getPrivateKey());
+        jws.setKeyIdHeaderValue(rsaJsonWebKey.getKeyId());
+        jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
+        String jwt = jws.getCompactSerialization();
+
+        JwtConsumer jwtConsumer = new JwtConsumerBuilder()
+                .setExpectedIssuer("Issuer")
+                .setExpectedAudience(true, true, "Audience1")
+                .setVerificationKey(rsaJsonWebKey.getKey())
+                .build();
+
+        jwtConsumer.processToClaims(jwt);
+    }
+
 }

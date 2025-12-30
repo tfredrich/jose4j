@@ -175,7 +175,7 @@ public class RsaKeyManagementMoreTest
         catch (JoseException e)
         {
             log.debug(ExceptionHelp.toStringWithCauses(e));
-            Assert.assertTrue(e.getMessage().contains("Tag mismatch!"));
+            Assert.assertTrue(e.getMessage().contains("Tag mismatch"));
         }
 
         jwe = new JsonWebEncryption();
@@ -190,7 +190,7 @@ public class RsaKeyManagementMoreTest
         catch (JoseException e)
         {
             log.debug(ExceptionHelp.toStringWithCauses(e));
-            Assert.assertTrue(e.getMessage().contains("Tag mismatch!"));
+            Assert.assertTrue(e.getMessage().contains("Tag mismatch"));
         }
 
         jwkJson =  "{\n" +
@@ -229,7 +229,7 @@ public class RsaKeyManagementMoreTest
         catch (JoseException e)
         {
             log.debug(ExceptionHelp.toStringWithCauses(e));
-            Assert.assertTrue(e.getMessage().contains("Tag mismatch!"));
+            Assert.assertTrue(e.getMessage().contains("Tag mismatch"));
         }
     }
 }
