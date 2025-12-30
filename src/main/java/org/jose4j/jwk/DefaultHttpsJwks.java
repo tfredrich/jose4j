@@ -16,12 +16,13 @@
 package org.jose4j.jwk;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.jose4j.http.SimpleResponse;
+import org.jose4j.jwk.cache.JwksCache;
+import org.jose4j.jwk.cache.InMemoryJwksCache;
 import org.jose4j.lang.ExceptionHelp;
 import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
@@ -46,7 +47,7 @@ extends AbstractHttpsJwks
 
     private volatile long defaultCacheDuration = 3600;  // seconds
     private volatile long retainCacheOnErrorDurationMills = 0;
-    private volatile Cache cache = new Cache(Collections.<JsonWebKey>emptyList(), 0);
+    private volatile JwksCache cache = new InMemoryJwksCache();
 
     // used to stop multiple threads from refreshing in parallel
     private final ReentrantLock refreshLock = new ReentrantLock();
@@ -54,13 +55,26 @@ extends AbstractHttpsJwks
     private long refreshReprieveThreshold = 300L;
 
     /**
-     * Create a new HttpsJwks that cab be used to retrieve JWKs from the given location.
+     * Create a new HttpsJwks that can be used to retrieve JWKs from the given location.
      * @param location the HTTPS URI of the JSON Web Key Set
      */
     public DefaultHttpsJwks(String location)
     {
     	super(location);
     }
+
+    /**
+     * Create a new HttpsJwks that can be used to retrieve JWKs from the given location
+     * and uses the given cache implementation.
+     * 
+     * @param location the HTTPS URI of the JSON Web Key Set
+     * @param jwksCache the cache implementation to use
+     */
+    public DefaultHttpsJwks(String location, JwksCache jwksCache)
+	{
+		super(location);
+		setCache(jwksCache);
+	}
 
     /**
      * The time period to cache the JWKs from the endpoint, if the cache directive
@@ -103,6 +117,20 @@ extends AbstractHttpsJwks
         this.refreshReprieveThreshold = refreshReprieveThreshold;
     }
 
+    public void setCache(JwksCache jwksCache)
+    {
+        if (jwksCache == null)
+        {
+            throw new IllegalArgumentException("JwksCache cannot be null.");
+        }
+        JwksCache.Entry existing = getCacheEntry();
+        this.cache = jwksCache;
+        if (existing.hasKeys())
+        {
+            updateCache(existing);
+        }
+    }
+
     /**
      * Gets the JSON Web Keys from the JWKS endpoint location or from local cache, if appropriate.
      * @return a list of JsonWebKeys
@@ -112,18 +140,18 @@ extends AbstractHttpsJwks
     public List<JsonWebKey> getJsonWebKeys() throws JoseException, IOException
     {
         final long now = System.currentTimeMillis();
-        Cache c = cache;
-        if (c.exp > now)
+        JwksCache.Entry entry = getCacheEntry();
+        if (entry.getExpiresAt() > now)
         {
             // common case: keys are still good
-            return c.keys;
+            return entry.getKeys();
         }
         if (!refreshLock.tryLock())
         {
             // another thread is already refreshing, use cached keys for now (if not null)
-            if (!c.keys.isEmpty())
+            if (entry.hasKeys())
             {
-                return c.keys;
+                return entry.getKeys();
             }
             else
             {
@@ -134,14 +162,16 @@ extends AbstractHttpsJwks
         try
         {
             refresh();
-            c = cache;
+            entry = getCacheEntry();
         }
         catch (Exception e)
         {
-            if (retainCacheOnErrorDurationMills > 0 && !c.keys.isEmpty())
+            if (retainCacheOnErrorDurationMills > 0 && entry.hasKeys())
             {
-                cache = c = new Cache(c.keys, now + retainCacheOnErrorDurationMills);
-                log.info("Because of {} unable to refresh JWKS content from {} so will continue to use cached keys for more {} seconds until about {} -> {}", ExceptionHelp.toStringWithCauses(e), getLocation(), retainCacheOnErrorDurationMills/1000L, new Date(c.exp), c.keys);
+                JwksCache.Entry retained = new JwksCache.Entry(entry.getKeys(), now + retainCacheOnErrorDurationMills);
+                updateCache(retained);
+                entry = retained;
+                log.info("Because of {} unable to refresh JWKS content from {} so will continue to use cached keys for more {} seconds until about {} -> {}", ExceptionHelp.toStringWithCauses(e), getLocation(), retainCacheOnErrorDurationMills/1000L, new Date(retained.getExpiresAt()), retained.getKeys());
             }
             else
             {
@@ -152,7 +182,7 @@ extends AbstractHttpsJwks
         {
             refreshLock.unlock();
         }
-        return c.keys;
+        return entry.getKeys();
     }
 
 
@@ -167,9 +197,10 @@ extends AbstractHttpsJwks
         refreshLock.lock();
         try
         {
-            long last = System.currentTimeMillis() - cache.created;
+            JwksCache.Entry currentEntry = getCacheEntry();
+            long last = System.currentTimeMillis() - currentEntry.getCreated();
 
-            if (last < refreshReprieveThreshold && !cache.keys.isEmpty())
+            if (last < refreshReprieveThreshold && currentEntry.hasKeys())
             {
                 log.debug("NOT refreshing/loading JWKS from {} because it just happened {} mills ago", getLocation(), last);
             }
@@ -187,13 +218,24 @@ extends AbstractHttpsJwks
                 }
                 long exp = System.currentTimeMillis() + (cacheLife * 1000L);
                 log.debug("Updated JWKS content from {} will be cached for {} seconds until about {} -> {}", getLocation(), cacheLife, new Date(exp), keys);
-                cache = new Cache(keys, exp);
+                updateCache(new JwksCache.Entry(keys, exp));
             }
         } 
         finally
         {
             refreshLock.unlock();
         }
+    }
+
+    private JwksCache.Entry getCacheEntry()
+    {
+        JwksCache.Entry entry = cache.get(getLocation());
+        return (entry == null) ? JwksCache.Entry.empty() : entry;
+    }
+
+    private void updateCache(JwksCache.Entry entry)
+    {
+        cache.put(getLocation(), entry);
     }
 
     static long getCacheLife(SimpleResponse response)
@@ -234,16 +276,4 @@ extends AbstractHttpsJwks
         return life;
     }
 
-    private static class Cache
-    {
-        private final List<JsonWebKey> keys;
-        private final long exp;
-        private final long created = System.currentTimeMillis();
-
-        private Cache(List<JsonWebKey> keys, long exp)
-        {
-            this.keys = keys;
-            this.exp = exp;
-        }
-    }
 }

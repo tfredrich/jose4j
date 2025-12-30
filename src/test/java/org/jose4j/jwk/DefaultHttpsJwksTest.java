@@ -17,13 +17,17 @@ package org.jose4j.jwk;
 
 import org.jose4j.http.Get;
 import org.jose4j.http.Response;
+import org.jose4j.http.SimpleGet;
 import org.jose4j.http.SimpleResponse;
+import org.jose4j.jwk.cache.JwksCache;
+import org.jose4j.jwk.cache.InMemoryJwksCache;
 import org.jose4j.keys.X509Util;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +39,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
@@ -106,6 +111,35 @@ public class DefaultHttpsJwksTest
     }
 
     // todo more tests
+
+    @Test
+    public void sharesCacheAcrossInstances() throws Exception
+    {
+        String location = "https://example.com/jwks";
+        String jwksJson = "{\"keys\":[{\"kty\":\"oct\",\"kid\":\"one\",\"k\":\"AQAB\"}]}";
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put("Cache-Control", Collections.singletonList("max-age=600"));
+        SimpleResponse response = new Response(200, "OK", headers, jwksJson);
+
+        JwksCache sharedCache = new InMemoryJwksCache();
+        CountingSimpleGet firstGet = new CountingSimpleGet(response);
+        CountingSimpleGet secondGet = new CountingSimpleGet(response);
+
+        DefaultHttpsJwks first = new DefaultHttpsJwks(location);
+        first.setSimpleHttpGet(firstGet);
+        first.setCache(sharedCache);
+
+        DefaultHttpsJwks second = new DefaultHttpsJwks(location);
+        second.setSimpleHttpGet(secondGet);
+        second.setCache(sharedCache);
+
+        List<JsonWebKey> firstKeys = first.getJsonWebKeys();
+        List<JsonWebKey> secondKeys = second.getJsonWebKeys();
+
+        assertThat(firstKeys, sameInstance(secondKeys));
+        assertThat(firstGet.getCount(), equalTo(1));
+        assertThat(secondGet.getCount(), equalTo(0));
+    }
 
     @Test
     @Ignore // skip this one b/c of external dependency and manual intervention needed
@@ -192,5 +226,28 @@ public class DefaultHttpsJwksTest
         }
 
         System.out.println(System.currentTimeMillis() - start);
+    }
+}
+
+class CountingSimpleGet implements SimpleGet
+{
+    private final SimpleResponse response;
+    private int count;
+
+    CountingSimpleGet(SimpleResponse response)
+    {
+        this.response = response;
+    }
+
+    @Override
+    public SimpleResponse get(String location) throws IOException
+    {
+        count++;
+        return response;
+    }
+
+    int getCount()
+    {
+        return count;
     }
 }
